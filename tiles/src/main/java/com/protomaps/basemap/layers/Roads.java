@@ -4,6 +4,7 @@ import com.onthegomap.planetiler.FeatureCollector;
 import com.onthegomap.planetiler.FeatureMerge;
 import com.onthegomap.planetiler.ForwardingProfile;
 import com.onthegomap.planetiler.VectorTile;
+import com.onthegomap.planetiler.geo.GeometryException;
 import com.onthegomap.planetiler.reader.SourceFeature;
 import com.protomaps.basemap.feature.FeatureId;
 import com.protomaps.basemap.names.OsmNames;
@@ -232,8 +233,11 @@ public class Roads implements ForwardingProfile.FeatureProcessor, ForwardingProf
 
   @Override
   public void processFeature(SourceFeature sourceFeature, FeatureCollector features) {
-    // basic highway features
-    if (sourceFeature.canBeLine() ) {
+
+    // some features (like piers and dams) can be complex geom types (both line and polygons)
+    // and let's exclude points entirely
+    if (sourceFeature.canBeLine() && !sourceFeature.canBePolygon() ) {
+      // basic highway features
      if( sourceFeature.hasTag("highway") &&
         !(sourceFeature.hasTag("highway", "proposed", "construction"))) {
 
@@ -1163,8 +1167,166 @@ public class Roads implements ForwardingProfile.FeatureProcessor, ForwardingProf
        }
      }
 
+  //#############################################################
+  //#
+  //# OSM construction
+  //#
+  //#############################################################
+    if( sourceFeature.hasTag("highway") &&
+            sourceFeature.hasTag("construction", "motorway", "motorway_link", "trunk", "primary", "secondary", "tertiary", "trunk_link", "unclassified", "residential", "road",
+                    "primary_link", "secondary_link", "living_street", "service", "pedestrian", "track", "cycleway", "bridleway",
+                    "tertiary_link", "footway", "steps",
+                    "corridor")) {
+      String shield_text = sourceFeature.getString("ref");
+      Integer shield_text_length = (shield_text == null ? null : shield_text.length());
+
+      var feat = features.line(this.name())
+              // This inhibits feature merging, and should only be exported at max_zoom
+              //.setId(FeatureId.create(sourceFeature))
+              .setMinPixelSize(0)
+              .setPixelTolerance(0)
+              // TODO (nvkelso 2023-03-26)
+              //      This should be expressed as a boolean ("is_bridge")
+              .setAttrWithMinzoom("bridge", sourceFeature.getString("bridge"), 12)
+              // TODO (nvkelso 2023-03-26)
+              //      This should be expressed as a boolean ("is_tunnel")
+              .setAttrWithMinzoom("tunnel", sourceFeature.getString("tunnel"), 12)
+              // TODO (nvkelso 2023-03-26)
+              //      This should be sanity checked for ±6 int values
+              .setAttrWithMinzoom("layer", sourceFeature.getString("layer"), 12)
+              .setAttrWithMinzoom("oneway", sourceFeature.getString("oneway"), 15)
+              .setAttr("source", "openstreetmap.org")
+              // nvkelso (20230321)
+              // TODO    I just don't want them showing up early
+              .setZoomRange(20, 20);
+
+      var construction_val = sourceFeature.getString("construction");
+
+      switch (construction_val) {
+        case "motorway":
+        case "motorway_link":
+        case "trunk":
+        case "primary":
+        case "secondary":
+        case "tertiary":
+        case "trunk_link":
+        case "unclassified":
+        case "residential":
+        case "road":
+        case "siding":
+          feat.setAttr("kind", "construction")
+                  .setAttr("kind_detail", construction_val)
+                  .setAttr("min_zoom", 12)
+                  .setZoomRange(11, 15)
+                  .setAttrWithMinzoom("shield_text", shield_text, 14)
+                  .setAttrWithMinzoom("shield_text_length", shield_text_length, 14)
+                  .setAttrWithMinzoom("network", sourceFeature.getString("network"), 14)
+                  .setAttrWithMinzoom("service", sourceFeature.getString("service"), 14)
+                  .setAttrWithMinzoom("surface", sourceFeature.getString("surface"), 14)
+                  .setAttrWithMinzoom("cycleway", sourceFeature.getString("cycleway"), 14)
+                  .setAttrWithMinzoom("cycleway_left", sourceFeature.getString("cycleway:left"), 14)
+                  .setAttrWithMinzoom("cycleway_right", sourceFeature.getString("cycleway:right"), 14)
+                  .setAttrWithMinzoom("hgv", sourceFeature.getString("hgv"), 14)
+                  .setAttrWithMinzoom("colour", sourceFeature.getString("colour"), 15)
+                  .setAttrWithMinzoom("operator", sourceFeature.getString("operator"), 15)
+                  .setAttrWithMinzoom("route", sourceFeature.getString("route"), 15)
+                  .setAttrWithMinzoom("route_name", sourceFeature.getString("route_name"), 15)
+                  .setAttrWithMinzoom("state", sourceFeature.getString("state"), 15)
+                  .setAttrWithMinzoom("symbol", sourceFeature.getString("symbol"), 15)
+                  .setAttrWithMinzoom("type", sourceFeature.getString("type"), 15)
+                  .setAttrWithMinzoom("access", sourceFeature.getString("access"), 14);
+          OsmNames.setOsmNames(feat, sourceFeature, 13);
+          break;
+        case "primary_link":
+        case "secondary_link":
+        case "living_street":
+        case "service":
+        case "pedestrian":
+        case "track":
+        case "cycleway":
+        case "bridleway":
+          feat.setAttr("kind", "construction")
+                  .setAttr("kind_detail", construction_val)
+                  .setAttr("min_zoom", 13)
+                  .setZoomRange(12, 15)
+                  .setAttrWithMinzoom("shield_text", shield_text, 14)
+                  .setAttrWithMinzoom("shield_text_length", shield_text_length, 14)
+                  .setAttrWithMinzoom("network", sourceFeature.getString("network"), 14)
+                  .setAttrWithMinzoom("service", sourceFeature.getString("service"), 14)
+                  .setAttrWithMinzoom("surface", sourceFeature.getString("surface"), 14)
+                  .setAttrWithMinzoom("cycleway", sourceFeature.getString("cycleway"), 14)
+                  .setAttrWithMinzoom("cycleway_left", sourceFeature.getString("cycleway:left"), 14)
+                  .setAttrWithMinzoom("cycleway_right", sourceFeature.getString("cycleway:right"), 14)
+                  .setAttrWithMinzoom("hgv", sourceFeature.getString("hgv"), 14)
+                  .setAttrWithMinzoom("colour", sourceFeature.getString("colour"), 15)
+                  .setAttrWithMinzoom("operator", sourceFeature.getString("operator"), 15)
+                  .setAttrWithMinzoom("route", sourceFeature.getString("route"), 15)
+                  .setAttrWithMinzoom("route_name", sourceFeature.getString("route_name"), 15)
+                  .setAttrWithMinzoom("state", sourceFeature.getString("state"), 15)
+                  .setAttrWithMinzoom("symbol", sourceFeature.getString("symbol"), 15)
+                  .setAttrWithMinzoom("type", sourceFeature.getString("type"), 15)
+                  .setAttrWithMinzoom("access", sourceFeature.getString("access"), 14);
+          OsmNames.setOsmNames(feat, sourceFeature, 14);
+          break;
+        case "tertiary_link":
+        case "footway":
+        case "steps":
+          feat.setAttr("kind", "construction")
+                  .setAttr("kind_detail", construction_val)
+                  .setAttr("min_zoom", 14)
+                  .setZoomRange(13, 15)
+                  .setAttrWithMinzoom("shield_text", shield_text, 14)
+                  .setAttrWithMinzoom("shield_text_length", shield_text_length, 14)
+                  .setAttrWithMinzoom("network", sourceFeature.getString("network"), 14)
+                  .setAttrWithMinzoom("service", sourceFeature.getString("service"), 14)
+                  .setAttrWithMinzoom("surface", sourceFeature.getString("surface"), 14)
+                  .setAttrWithMinzoom("cycleway", sourceFeature.getString("cycleway"), 14)
+                  .setAttrWithMinzoom("cycleway_left", sourceFeature.getString("cycleway:left"), 14)
+                  .setAttrWithMinzoom("cycleway_right", sourceFeature.getString("cycleway:right"), 14)
+                  .setAttrWithMinzoom("hgv", sourceFeature.getString("hgv"), 14)
+                  .setAttrWithMinzoom("colour", sourceFeature.getString("colour"), 15)
+                  .setAttrWithMinzoom("operator", sourceFeature.getString("operator"), 15)
+                  .setAttrWithMinzoom("route", sourceFeature.getString("route"), 15)
+                  .setAttrWithMinzoom("route_name", sourceFeature.getString("route_name"), 15)
+                  .setAttrWithMinzoom("state", sourceFeature.getString("state"), 15)
+                  .setAttrWithMinzoom("symbol", sourceFeature.getString("symbol"), 15)
+                  .setAttrWithMinzoom("type", sourceFeature.getString("type"), 15)
+                  .setAttrWithMinzoom("access", sourceFeature.getString("access"), 14);
+          OsmNames.setOsmNames(feat, sourceFeature, 14);
+          break;
+        case "corridor":
+          feat.setAttr("kind", "construction")
+                  .setAttr("kind_detail", construction_val)
+                  .setAttr("min_zoom", 16)
+                  // TODO: MAX_ZOOM
+                  .setZoomRange(15, 15)
+                  .setAttrWithMinzoom("shield_text", shield_text, 14)
+                  .setAttrWithMinzoom("shield_text_length", shield_text_length, 14)
+                  .setAttrWithMinzoom("network", sourceFeature.getString("network"), 14)
+                  .setAttrWithMinzoom("service", sourceFeature.getString("service"), 14)
+                  .setAttrWithMinzoom("surface", sourceFeature.getString("surface"), 14)
+                  .setAttrWithMinzoom("cycleway", sourceFeature.getString("cycleway"), 14)
+                  .setAttrWithMinzoom("cycleway_left", sourceFeature.getString("cycleway:left"), 14)
+                  .setAttrWithMinzoom("cycleway_right", sourceFeature.getString("cycleway:right"), 14)
+                  .setAttrWithMinzoom("hgv", sourceFeature.getString("hgv"), 14)
+                  .setAttrWithMinzoom("colour", sourceFeature.getString("colour"), 15)
+                  .setAttrWithMinzoom("operator", sourceFeature.getString("operator"), 15)
+                  .setAttrWithMinzoom("route", sourceFeature.getString("route"), 15)
+                  .setAttrWithMinzoom("route_name", sourceFeature.getString("route_name"), 15)
+                  .setAttrWithMinzoom("state", sourceFeature.getString("state"), 15)
+                  .setAttrWithMinzoom("symbol", sourceFeature.getString("symbol"), 15)
+                  .setAttrWithMinzoom("type", sourceFeature.getString("type"), 15)
+                  .setAttrWithMinzoom("access", sourceFeature.getString("access"), 14);
+          OsmNames.setOsmNames(feat, sourceFeature, 15);
+          break;
+      }
+    }
+
      // OSM aeroway
      if( sourceFeature.hasTag("aeroway", "runway", "taxiway")) {
+       String shield_text = sourceFeature.getString("ref");
+       Integer shield_text_length = (shield_text == null ? null : shield_text.length());
+
        var feat = features.line(this.name())
                // This inhibits feature merging, and should only be exported at max_zoom
                //.setId(FeatureId.create(sourceFeature))
@@ -1180,10 +1342,11 @@ public class Roads implements ForwardingProfile.FeatureProcessor, ForwardingProf
                //      This should be sanity checked for ±6 int values
                .setAttrWithMinzoom("layer", sourceFeature.getString("layer"), 12)
                .setAttrWithMinzoom("oneway", sourceFeature.getString("oneway"), 15)
-               .setAttr("source", "openstreetmap.org")
-               // nvkelso (20230321)
-               // TODO    I just don't want them showing up early
-               .setZoomRange(20, 20);
+               .setAttrWithMinzoom("surface", sourceFeature.getString("surface"), 14)
+               .setAttrWithMinzoom("ref", shield_text, 14)
+               .setAttrWithMinzoom("shield_text", shield_text, 14)
+               .setAttrWithMinzoom("shield_text_length", shield_text_length, 14)
+               .setAttr("source", "openstreetmap.org");
 
        switch (sourceFeature.getString("aeroway")) {
          case "runway":
@@ -1201,6 +1364,8 @@ public class Roads implements ForwardingProfile.FeatureProcessor, ForwardingProf
                    .setZoomRange(10, 15);
            break;
        }
+
+       OsmNames.setOsmNames(feat, sourceFeature, 14);
      }
 
       //#############################################################
@@ -1292,15 +1457,367 @@ public class Roads implements ForwardingProfile.FeatureProcessor, ForwardingProf
                 .setZoomRange(13, 15);
           }
         }
+        OsmNames.setOsmNames(feat, sourceFeature, 14);
       }
-      // (nvkelso) 20230328
-      // TODO: add other OSM "highway" features, including non-highway lines
-      // OSM construction
-      // OSM ferry
-      // OSM aerialway
-      // OSM leisure
-      // OSM man_made
-      // OSM piste
+
+      //#############################################################
+      //#
+      //# OSM ferry
+      //#
+      //#############################################################
+
+      if( sourceFeature.hasTag("route", "ferry") ) {
+        String shield_text = sourceFeature.getString("ref");
+        Integer shield_text_length = (shield_text == null ? null : shield_text.length());
+
+        var feat = features.line(this.name())
+                // This inhibits feature merging, and should only be exported at max_zoom
+                //.setId(FeatureId.create(sourceFeature))
+                .setMinPixelSize(0)
+                .setPixelTolerance(0)
+                // TODO (nvkelso 2023-03-26)
+                //      This should be expressed as a boolean ("is_bridge")
+                .setAttrWithMinzoom("bridge", sourceFeature.getString("bridge"), 12)
+                // TODO (nvkelso 2023-03-26)
+                //      This should be expressed as a boolean ("is_tunnel")
+                .setAttrWithMinzoom("tunnel", sourceFeature.getString("tunnel"), 12)
+                // TODO (nvkelso 2023-03-26)
+                //      This should be sanity checked for ±6 int values
+                .setAttrWithMinzoom("layer", sourceFeature.getString("layer"), 12)
+                .setAttrWithMinzoom("oneway", sourceFeature.getString("oneway"), 15)
+                .setAttr("source", "openstreetmap.org")
+                .setAttr("kind", "ferry")
+                // TODO use a variable zoom for ferries
+                //min_zoom: { call: { func: mz_calculate_ferry_level, args: [ { col: shape } ] } }
+                .setAttr("min_zoom", 13)
+                .setZoomRange(12, 15)
+                .setAttrWithMinzoom("shield_text", shield_text, 14)
+                .setAttrWithMinzoom("shield_text_length", shield_text_length, 14)
+                .setAttrWithMinzoom("network", sourceFeature.getString("network"), 14)
+                //.setAttrWithMinzoom("service", sourceFeature.getString("service"), 14)
+                //.setAttrWithMinzoom("surface", sourceFeature.getString("surface"), 14)
+                //.setAttrWithMinzoom("cycleway", sourceFeature.getString("cycleway"), 14)
+                //.setAttrWithMinzoom("cycleway_left", sourceFeature.getString("cycleway:left"), 14)
+                //.setAttrWithMinzoom("cycleway_right", sourceFeature.getString("cycleway:right"), 14)
+                //.setAttrWithMinzoom("hgv", sourceFeature.getString("hgv"), 14)
+                .setAttrWithMinzoom("colour", sourceFeature.getString("colour"), 15)
+                .setAttrWithMinzoom("operator", sourceFeature.getString("operator"), 15)
+                .setAttrWithMinzoom("route", sourceFeature.getString("route"), 15)
+                .setAttrWithMinzoom("route_name", sourceFeature.getString("route_name"), 15)
+                .setAttrWithMinzoom("state", sourceFeature.getString("state"), 15)
+                .setAttrWithMinzoom("symbol", sourceFeature.getString("symbol"), 15)
+                .setAttrWithMinzoom("type", sourceFeature.getString("type"), 15)
+                .setAttrWithMinzoom("access", sourceFeature.getString("access"), 14);
+
+        Double way_length = null;
+        try { way_length = sourceFeature.length(); } catch(GeometryException e) {  System.out.println(e); }
+
+        if( way_length > 1223) {
+          feat.setAttr("min_zoom", 8)
+                  .setZoomRange(7, 15);
+        } else if (way_length > 611) {
+          feat.setAttr("min_zoom", 9)
+                  .setZoomRange(8, 15);
+        } else if (way_length > 306) {
+          feat.setAttr("min_zoom", 10)
+                  .setZoomRange(9, 15);
+        } else if (way_length > 153) {
+          feat.setAttr("min_zoom", 11)
+                  .setZoomRange(10, 15);
+        } else if (way_length > 76) {
+          feat.setAttr("min_zoom", 12)
+                  .setZoomRange(11, 15);
+        } else {
+          feat.setAttr("min_zoom", 13)
+                  .setZoomRange(12, 15);
+        }
+
+        OsmNames.setOsmNames(feat, sourceFeature, 13);
+      }
+      //#############################################################
+      //#
+      //# OSM aerialway
+      //#
+      //#############################################################
+
+      if( sourceFeature.hasTag("aerialway", "gondola", "cable_car",
+              "chair_lift",
+              "drag_lift", "platter", "t-bar", "goods", "magic_carpet", "rope_tow", "yes", "zip_line", "j-bar", "unknown", "mixed_lift", "canopy", "cableway"
+      ) ) {
+        String shield_text = sourceFeature.getString("ref");
+        Integer shield_text_length = (shield_text == null ? null : shield_text.length());
+
+        var feat = features.line(this.name())
+                .setAttr("kind", "aerialway")
+                // This inhibits feature merging, and should only be exported at max_zoom
+                //.setId(FeatureId.create(sourceFeature))
+                .setMinPixelSize(0)
+                .setPixelTolerance(0)
+                // defaults for theme, overriden by kind below
+                .setAttr("min_zoom", 15)
+                .setZoomRange(14, 15)
+                // TODO (nvkelso 2023-03-26)
+                //      This should be expressed as a boolean ("is_bridge")
+                .setAttrWithMinzoom("bridge", sourceFeature.getString("bridge"), 12)
+                // TODO (nvkelso 2023-03-26)
+                //      This should be expressed as a boolean ("is_tunnel")
+                .setAttrWithMinzoom("tunnel", sourceFeature.getString("tunnel"), 12)
+                // TODO (nvkelso 2023-03-26)
+                //      This should be sanity checked for ±6 int values
+                .setAttrWithMinzoom("layer", sourceFeature.getString("layer"), 12)
+                .setAttrWithMinzoom("oneway", sourceFeature.getString("oneway"), 15)
+                .setAttr("source", "openstreetmap.org")
+                // TODO use a variable zoom for ferries
+                .setAttrWithMinzoom("shield_text", shield_text, 14)
+                .setAttrWithMinzoom("shield_text_length", shield_text_length, 14)
+                .setAttrWithMinzoom("network", sourceFeature.getString("network"), 14)
+                //.setAttrWithMinzoom("service", sourceFeature.getString("service"), 14)
+                //.setAttrWithMinzoom("surface", sourceFeature.getString("surface"), 14)
+                //.setAttrWithMinzoom("cycleway", sourceFeature.getString("cycleway"), 14)
+                //.setAttrWithMinzoom("cycleway_left", sourceFeature.getString("cycleway:left"), 14)
+                //.setAttrWithMinzoom("cycleway_right", sourceFeature.getString("cycleway:right"), 14)
+                //.setAttrWithMinzoom("hgv", sourceFeature.getString("hgv"), 14)
+                .setAttrWithMinzoom("colour", sourceFeature.getString("colour"), 15)
+                .setAttrWithMinzoom("operator", sourceFeature.getString("operator"), 15)
+                .setAttrWithMinzoom("route", sourceFeature.getString("route"), 15)
+                .setAttrWithMinzoom("route_name", sourceFeature.getString("route_name"), 15)
+                .setAttrWithMinzoom("state", sourceFeature.getString("state"), 15)
+                .setAttrWithMinzoom("symbol", sourceFeature.getString("symbol"), 15)
+                .setAttrWithMinzoom("type", sourceFeature.getString("type"), 15)
+                .setAttrWithMinzoom("access", sourceFeature.getString("access"), 14);
+
+        var aerialway_val = sourceFeature.getString("aerialway");
+        switch( aerialway_val ) {
+          case "gondola":
+          case "cable_car":
+            feat.setAttr("kind_detail", aerialway_val)
+                    .setAttr("min_zoom", 12)
+                    .setZoomRange(11, 15);
+            break;
+          case "chair_lift":
+            feat.setAttr("kind_detail", aerialway_val)
+                    .setAttr("min_zoom", 13)
+                    .setZoomRange(12, 15);
+            break;
+          case "drag_lift":
+          case "platter":
+          case "goods":
+          case "magic_carpet":
+          case "rope_tow":
+          case "zip_line":
+          case "unknown":
+          case "mixed_lift":
+          case "canopy":
+          case "cableway":
+            feat.setAttr("kind_detail", aerialway_val)
+                    .setAttr("min_zoom", 15)
+                    .setZoomRange(14, 15);
+            break;
+          case "t-bar":
+            feat.setAttr("kind_detail", "t_bar")
+                    .setAttr("min_zoom", 15)
+                    .setZoomRange(14, 15);
+            break;
+          case "j-bar":
+            feat.setAttr("kind_detail", "t_bar")
+                    .setAttr("min_zoom", 15)
+                    .setZoomRange(14, 15);
+            break;
+        }
+        OsmNames.setOsmNames(feat, sourceFeature, 13);
+      }
+
+      //#############################################################
+      //#
+      //# OSM leisure
+      //#
+      //#############################################################
+      if( sourceFeature.hasTag( "leisure", "track" ) &&
+              sourceFeature.hasTag( "sport", "athletics", "running", "horse_racing", "bmx", "disc_golf", "cycling", "ski_jumping", "motor", "karting", "obstacle_course", "equestrian", "alpine_slide", "soap_box_derby", "mud_truck_racing", "skiing", "drag_racing", "archery")
+      ) {
+        String shield_text = sourceFeature.getString("ref");
+        Integer shield_text_length = (shield_text == null ? null : shield_text.length());
+
+        var feat = features.line(this.name())
+                .setAttr("kind", "racetrack")
+                .setAttr("kind_detail", sourceFeature.getString("sport"))
+                // TODO (nvkelso 2023-03-29)
+                //      (v2) This seems unnecesary
+                .setAttr("leisure", "track")
+                // This inhibits feature merging, and should only be exported at max_zoom
+                //.setId(FeatureId.create(sourceFeature))
+                .setMinPixelSize(0)
+                .setPixelTolerance(0)
+                // defaults for theme, overriden by kind below
+                .setAttr("min_zoom", 14)
+                .setZoomRange(13, 15)
+                // TODO (nvkelso 2023-03-26)
+                //      This should be expressed as a boolean ("is_bridge")
+                .setAttrWithMinzoom("bridge", sourceFeature.getString("bridge"), 12)
+                // TODO (nvkelso 2023-03-26)
+                //      This should be expressed as a boolean ("is_tunnel")
+                .setAttrWithMinzoom("tunnel", sourceFeature.getString("tunnel"), 12)
+                // TODO (nvkelso 2023-03-26)
+                //      This should be sanity checked for ±6 int values
+                .setAttrWithMinzoom("layer", sourceFeature.getString("layer"), 12)
+                .setAttrWithMinzoom("oneway", sourceFeature.getString("oneway"), 15)
+                .setAttr("source", "openstreetmap.org")
+                // TODO use a variable zoom for ferries
+                .setAttrWithMinzoom("shield_text", shield_text, 14)
+                .setAttrWithMinzoom("shield_text_length", shield_text_length, 14)
+                .setAttrWithMinzoom("network", sourceFeature.getString("network"), 14)
+                .setAttrWithMinzoom("service", sourceFeature.getString("service"), 14)
+                .setAttrWithMinzoom("surface", sourceFeature.getString("surface"), 14)
+                .setAttrWithMinzoom("cycleway", sourceFeature.getString("cycleway"), 14)
+                .setAttrWithMinzoom("cycleway_left", sourceFeature.getString("cycleway:left"), 14)
+                .setAttrWithMinzoom("cycleway_right", sourceFeature.getString("cycleway:right"), 14)
+                .setAttrWithMinzoom("hgv", sourceFeature.getString("hgv"), 14)
+                .setAttrWithMinzoom("colour", sourceFeature.getString("colour"), 15)
+                .setAttrWithMinzoom("operator", sourceFeature.getString("operator"), 15)
+                .setAttrWithMinzoom("route", sourceFeature.getString("route"), 15)
+                .setAttrWithMinzoom("route_name", sourceFeature.getString("route_name"), 15)
+                .setAttrWithMinzoom("state", sourceFeature.getString("state"), 15)
+                .setAttrWithMinzoom("symbol", sourceFeature.getString("symbol"), 15)
+                .setAttrWithMinzoom("type", sourceFeature.getString("type"), 15)
+                .setAttrWithMinzoom("access", sourceFeature.getString("access"), 14);
+
+        OsmNames.setOsmNames(feat, sourceFeature, 14);
+      }
+
+      //#############################################################
+      //#
+      //# OSM man_made
+      //#
+      //#############################################################
+
+      // By this time we're already a line, but beware sometimes polygon data
+      if(  sourceFeature.hasTag( "man_made", "pier", "quay") ) {
+        String shield_text = sourceFeature.getString("ref");
+        Integer shield_text_length = (shield_text == null ? null : shield_text.length());
+
+        var feat = features.line(this.name())
+                .setAttr("kind", "path")
+                .setAttr("kind_detail", sourceFeature.getString("man_made"))
+                // This inhibits feature merging, and should only be exported at max_zoom
+                //.setId(FeatureId.create(sourceFeature))
+                .setMinPixelSize(0)
+                .setPixelTolerance(0)
+                // defaults for theme, overriden by kind below
+                .setAttr("min_zoom", 13)
+                .setZoomRange(12, 15)
+                // TODO (nvkelso 2023-03-26)
+                //      This should be expressed as a boolean ("is_bridge")
+                .setAttrWithMinzoom("bridge", sourceFeature.getString("bridge"), 12)
+                // TODO (nvkelso 2023-03-26)
+                //      This should be expressed as a boolean ("is_tunnel")
+                .setAttrWithMinzoom("tunnel", sourceFeature.getString("tunnel"), 12)
+                // TODO (nvkelso 2023-03-26)
+                //      This should be sanity checked for ±6 int values
+                .setAttrWithMinzoom("layer", sourceFeature.getString("layer"), 12)
+                .setAttrWithMinzoom("oneway", sourceFeature.getString("oneway"), 15)
+                .setAttr("source", "openstreetmap.org")
+                // TODO use a variable zoom for ferries
+                .setAttrWithMinzoom("shield_text", shield_text, 14)
+                .setAttrWithMinzoom("shield_text_length", shield_text_length, 14)
+                .setAttrWithMinzoom("network", sourceFeature.getString("network"), 14)
+                .setAttrWithMinzoom("service", sourceFeature.getString("service"), 14)
+                .setAttrWithMinzoom("surface", sourceFeature.getString("surface"), 14)
+                .setAttrWithMinzoom("cycleway", sourceFeature.getString("cycleway"), 14)
+                .setAttrWithMinzoom("cycleway_left", sourceFeature.getString("cycleway:left"), 14)
+                .setAttrWithMinzoom("cycleway_right", sourceFeature.getString("cycleway:right"), 14)
+                .setAttrWithMinzoom("hgv", sourceFeature.getString("hgv"), 14)
+                .setAttrWithMinzoom("colour", sourceFeature.getString("colour"), 15)
+                .setAttrWithMinzoom("operator", sourceFeature.getString("operator"), 15)
+                .setAttrWithMinzoom("route", sourceFeature.getString("route"), 15)
+                .setAttrWithMinzoom("route_name", sourceFeature.getString("route_name"), 15)
+                .setAttrWithMinzoom("state", sourceFeature.getString("state"), 15)
+                .setAttrWithMinzoom("symbol", sourceFeature.getString("symbol"), 15)
+                .setAttrWithMinzoom("type", sourceFeature.getString("type"), 15)
+                .setAttrWithMinzoom("access", sourceFeature.getString("access"), 14);
+
+        if( sourceFeature.hasTag( "mooring", "no", "yes", "commercial", " cruise", " customers", "declaration", "ferry", "guest", "private", "public", "waiting", "yacht", "yachts") ) {
+          feat.setAttr("kind_detail", sourceFeature.getString("mooring"));
+        }
+
+        OsmNames.setOsmNames(feat, sourceFeature, 14);
+      }
+
+      //#############################################################
+      //#
+      //# OSM piste
+      //#
+      //#############################################################
+
+      if( ! sourceFeature.hasTag( "piste:abandoned", "yes") &&
+              sourceFeature.hasTag( "piste:type", "nordic", "downhill", "sleigh", "skitour", "hike", "sled", "yes", "snow_park", "playground", "ski_jump")
+      ) {
+        String shield_text = sourceFeature.getString("ref");
+        Integer shield_text_length = (shield_text == null ? null : shield_text.length());
+
+        var feat = features.line(this.name())
+                .setAttr("kind", "piste")
+                // This inhibits feature merging, and should only be exported at max_zoom
+                //.setId(FeatureId.create(sourceFeature))
+                .setMinPixelSize(0)
+                .setPixelTolerance(0)
+                .setAttr("min_zoom", 13)
+                .setZoomRange(12, 15)
+                // TODO (nvkelso 2023-03-26)
+                //      This should be expressed as a boolean ("is_bridge")
+                .setAttrWithMinzoom("bridge", sourceFeature.getString("bridge"), 12)
+                // TODO (nvkelso 2023-03-26)
+                //      This should be expressed as a boolean ("is_tunnel")
+                .setAttrWithMinzoom("tunnel", sourceFeature.getString("tunnel"), 12)
+                // TODO (nvkelso 2023-03-26)
+                //      This should be sanity checked for ±6 int values
+                .setAttrWithMinzoom("layer", sourceFeature.getString("layer"), 12)
+                .setAttrWithMinzoom("oneway", sourceFeature.getString("oneway"), 15)
+                .setAttr("source", "openstreetmap.org")
+                // TODO (nvkelso 2023-03-29)
+                //      (v2) this seems unneccesary
+                .setAttrWithMinzoom("ref", shield_text, 13)
+                .setAttrWithMinzoom("shield_text", shield_text, 13)
+                .setAttrWithMinzoom("shield_text_length", shield_text_length, 13)
+                .setAttrWithMinzoom("network", sourceFeature.getString("network"), 14)
+                .setAttrWithMinzoom("service", sourceFeature.getString("service"), 14)
+                .setAttrWithMinzoom("surface", sourceFeature.getString("surface"), 14)
+                .setAttrWithMinzoom("cycleway", sourceFeature.getString("cycleway"), 14)
+                .setAttrWithMinzoom("cycleway_left", sourceFeature.getString("cycleway:left"), 14)
+                .setAttrWithMinzoom("cycleway_right", sourceFeature.getString("cycleway:right"), 14)
+                .setAttrWithMinzoom("hgv", sourceFeature.getString("hgv"), 14)
+                .setAttrWithMinzoom("colour", sourceFeature.getString("colour"), 15)
+                .setAttrWithMinzoom("operator", sourceFeature.getString("operator"), 15)
+                .setAttrWithMinzoom("route", sourceFeature.getString("route"), 15)
+                .setAttrWithMinzoom("route_name", sourceFeature.getString("route_name"), 15)
+                .setAttrWithMinzoom("state", sourceFeature.getString("state"), 15)
+                .setAttrWithMinzoom("symbol", sourceFeature.getString("symbol"), 15)
+                .setAttrWithMinzoom("type", sourceFeature.getString("type"), 15)
+                .setAttrWithMinzoom("access", sourceFeature.getString("access"), 14)
+
+                // These are from vector-datasource, but not sure wby they aren't part of core set
+                .setAttrWithMinzoom("description", sourceFeature.getString("description"), 14)
+                .setAttrWithMinzoom("distance", sourceFeature.getString("distance"), 14)
+                .setAttrWithMinzoom("ascent", sourceFeature.getString("ascent"), 14)
+                .setAttrWithMinzoom("descent", sourceFeature.getString("descent"), 14)
+                .setAttrWithMinzoom("roundtrip", sourceFeature.getString("roundtrip"), 14)
+
+                // These are piste specific
+                .setAttrWithMinzoom("piste_difficulty", sourceFeature.getString("piste:difficulty"), 13)
+                .setAttrWithMinzoom("piste_grooming", sourceFeature.getString("piste:grooming"), 13)
+                .setAttrWithMinzoom("piste_name", sourceFeature.getString("piste:name"), 14)
+                .setAttrWithMinzoom("ski", sourceFeature.getString("ski"), 13)
+                .setAttrWithMinzoom("snowshoe", sourceFeature.getString("snowshoe"), 13);
+
+        if( ! sourceFeature.hasTag( "piste:type", "yes" ) ) {
+          feat.setAttr("kind_detail", sourceFeature.getString("piste:type"));
+        }
+
+        if( sourceFeature.hasTag( "piste:name" ) && sourceFeature.getString("piste:name") != null ) {
+          feat.setAttr("name", sourceFeature.getString("piste:name"));
+        }
+
+        OsmNames.setOsmNames(feat, sourceFeature, 14);
+      }
     }
   }
 
