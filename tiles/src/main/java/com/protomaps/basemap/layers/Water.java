@@ -303,6 +303,62 @@ public class Water implements ForwardingProfile.FeatureProcessor, ForwardingProf
       }
 
       if (sf.canBePolygon()) {
+        Double way_area = 0.0;
+        try { way_area = sf.area(); } catch(GeometryException e) {  System.out.println(e); }
+        feature_min_zoom = 17;
+
+        // TODO (nvkelso) 20230327
+        //      Java says these numbers are "too long" lmao
+        //      in any event, they aren't relevant since we don't show lake labels until at least zoom 8?
+//        if( way_area > 20000000000) {
+//          feature_min_zoom = 1;
+//        } else
+//        if( way_area > 10000000000) {
+//          feature_min_zoom = 2;
+//        } else
+//        if( way_area >  5000000000) {
+//          feature_min_zoom = 3;
+//        } else
+        if( way_area >  2000000000) {
+          feature_min_zoom = 4;
+        } else
+        if( way_area >   500000000) {
+          feature_min_zoom = 5;
+        } else
+        if( way_area >   200000000) {
+          feature_min_zoom = 6;
+        } else
+        if( way_area >    50000000) {
+          feature_min_zoom = 7;
+        } else
+        if( way_area >    20000000) {
+          feature_min_zoom = 8;
+        } else
+        if( way_area >     5000000) {
+          feature_min_zoom = 9;
+        } else
+        if( way_area >    1000000) {
+          feature_min_zoom = 10;
+        } else
+        if( way_area >     200000) {
+          feature_min_zoom = 11;
+        } else
+        if( way_area >      50000) {
+          feature_min_zoom = 12;
+        } else
+        if( way_area >      20000) {
+          feature_min_zoom = 13;
+        } else
+        if( way_area >       2000) {
+          feature_min_zoom = 14;
+        } else
+        if( way_area >       1000) {
+          feature_min_zoom = 15;
+        } else
+        if( way_area >        400) {
+          feature_min_zoom = 16;
+        }
+
         var feat = features.polygon(this.name())
                 // Ids are only relevant at max_zoom, else they prevent merges
                 //.setId(FeatureId.create(sf))
@@ -326,19 +382,76 @@ public class Water implements ForwardingProfile.FeatureProcessor, ForwardingProf
         // Derive additional water label position points
         // Yes, this means there are points and polygons and lines all in same layer!
         if( sf.hasTag("name") && sf.getTag( "name") != null) {
+
+          // The min_zoom should vary with area, and be
+          // further dilated for labels
+          // Consider moving this to post processing on polygons
+          // so we don't generate lables for rediculously small areas
+
+          // default names to zoom 16 for polygons
+          name_min_zoom = 16;
+
+          // TODO (nvkelso) 20230327
+          //      Java says these numbers are "too long" lmao
+          //      in any event, they aren't relevant since we don't show lake labels until at least zoom 8?
+//          if( way_area > 1000000000000) {
+//            name_min_zoom = 1;
+//          }
+//          if( way_area > 500000000000) {
+//            name_min_zoom = 2;
+//          } else
+//          if( way_area > 250000000000) {
+//            name_min_zoom = 3;
+//          } else
+//          if( way_area > 120000000000) {
+//            name_min_zoom = 4;
+//          } else
+//          if( way_area >  80000000000) {
+//            name_min_zoom = 5;
+//          } else
+//          if( way_area >  40000000000) {
+//            name_min_zoom = 6;
+//          } else
+//          if( way_area >  10000000000) {
+//            name_min_zoom = 7;
+//          } else
+          if( way_area >    500000000) {
+            name_min_zoom = 8;
+          } else
+          if( way_area >    200000000) {
+            name_min_zoom = 9;
+          } else
+          if( way_area >    40000000) {
+            name_min_zoom = 10;
+          } else
+          if( way_area >     8000000) {
+            name_min_zoom = 11;
+          } else
+          if( way_area >     1000000) {
+            name_min_zoom = 12;
+          } else
+          if( way_area >      500000) {
+            name_min_zoom = 13;
+          } else
+          if( way_area >       50000) {
+            name_min_zoom = 14;
+          } else
+          if( way_area >       10000) {
+            name_min_zoom = 15;
+          }
+
           // Find the polygons centroid and use it as label position
           var water_label_position = features.pointOnSurface(this.name())
               .setAttr("name", sf.getString( "name"))
               .setAttr("kind", kind)
-              // TODO (nvkelso) 20230327
-              //      The min_zoom should vary with area, and be
-              //      further dilated for labels
-              //      Consider moving this to post processing on polygons
-              //      so we don't generate lables for rediculously small areas
               .setAttr("min_zoom", name_min_zoom)
               .setAttr("label_position", true)
               .setAttr("source", "openstreetmap.org")
-              .setZoomRange(feature_min_zoom, theme_max_zoom)
+              // TODO (nvkelso) 20230329
+              //      This **should** work, but the min_zoom calcs above are broken,
+              //      so everything shows up at zoom 15/17 instead
+              //.setZoomRange(name_min_zoom-1, theme_max_zoom)
+              .setZoomRange(theme_min_zoom+2, theme_max_zoom)
               // TODO (nvkelso) 20230327
               //      This should be a boolean, and other sanity checks on values
               .setAttr("intermittent", sf.getString("intermittent"))
@@ -361,7 +474,7 @@ public class Water implements ForwardingProfile.FeatureProcessor, ForwardingProf
             water_label_position.setAttr("alkaline", true);
           }
 
-          OsmNames.setOsmNames(water_label_position, sf, name_min_zoom);
+          OsmNames.setOsmNames(water_label_position, sf, name_min_zoom-1);
         }
       }
       if (sf.canBeLine()) {
