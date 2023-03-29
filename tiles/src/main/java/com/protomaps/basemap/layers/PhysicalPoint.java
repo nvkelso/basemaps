@@ -15,6 +15,10 @@ public class PhysicalPoint implements ForwardingProfile.FeatureProcessor, Forwar
     return "physical_point";
   }
 
+  // TODO (nvkelso 2023-03-21)
+  // 1. This is more akin to the earth layer in Tilezen v1.9
+  // 2. spreadsheets/sort_rank/landuse.csv
+
   @Override
   public void processFeature(SourceFeature sf, FeatureCollector features) {
     if (sf.isPoint() && (sf.hasTag("place", "sea", "ocean") || sf.hasTag("natural", "peak"))) {
@@ -34,7 +38,12 @@ public class PhysicalPoint implements ForwardingProfile.FeatureProcessor, Forwar
         .setAttr("place", sf.getString("place"))
         .setAttr("natural", sf.getString("natural"))
         .setAttr("ele", sf.getString("ele"))
+        .setAttr("source", "openstreetmap.org")
         .setZoomRange(minzoom, 15);
+
+      // nvkelso (20230321)
+      // TODO
+      //    'source', 'openstreetmap.org'
 
       OsmNames.setOsmNames(feat, sf, 0);
     }
@@ -42,6 +51,11 @@ public class PhysicalPoint implements ForwardingProfile.FeatureProcessor, Forwar
 
   @Override
   public List<VectorTile.Feature> postProcess(int zoom, List<VectorTile.Feature> items) {
+    // nvkelso (20230321)
+    // https://github.com/tilezen/tilequeue/blob/33a4dd42e8f764bcc9817e89554ee21922f501a8/config.yaml.sample#L146-L155
+    // TODO
+    // This should be 256 px buffer (continents, oceans)
+
     return items;
   }
 }

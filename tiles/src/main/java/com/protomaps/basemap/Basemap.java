@@ -22,9 +22,14 @@ public class Basemap extends ForwardingProfile {
 
   public Basemap() {
 
-    var admin = new Boundaries();
-    registerHandler(admin);
-    registerSourceHandler("osm", admin);
+	// Why isn't this var called "boundaries"?
+    var boundaries = new Boundaries();
+    registerHandler(boundaries);
+    registerSourceHandler("ne", boundaries::processNe);
+    registerSourceHandler("osm", boundaries);
+    // TODO (nvkelso 2023-03-21)
+    // This is a guess for maritime mask calulations
+    // registerSourceHandler("buffered_land", boundaries::processNaturalEarth);
 
     var buildings = new Buildings();
     registerHandler(buildings);
@@ -32,30 +37,38 @@ public class Basemap extends ForwardingProfile {
 
     var landuse = new Landuse();
     registerHandler(landuse);
+    // TODO (nvkelso 2023-03-21)
+    // This is a guess for urban areas
+    registerSourceHandler("ne", landuse::processNe);
     registerSourceHandler("osm", landuse);
 
-    var natural = new Natural();
-    registerHandler(natural);
-    registerSourceHandler("osm", natural);
+    //var natural = new Natural();
+    //registerHandler(natural);
+    //registerSourceHandler("osm", natural);
 
-    var physical_line = new PhysicalLine();
-    registerHandler(physical_line);
-    registerSourceHandler("osm", physical_line);
+//    var physical_line = new PhysicalLine();
+//    registerHandler(physical_line);
+//    registerSourceHandler("osm", physical_line);
 
-    var physical_point = new PhysicalPoint();
-    registerHandler(physical_point);
-    registerSourceHandler("osm", physical_point);
+//    var physical_point = new PhysicalPoint();
+//    registerHandler(physical_point);
+//    registerSourceHandler("osm", physical_point);
 
-    var place = new Places();
-    registerHandler(place);
-    registerSourceHandler("osm", place);
+    var places = new Places();
+    registerHandler(places);
+    registerSourceHandler("ne", places::processNe);
+    registerSourceHandler("osm", places);
+    // TODO (nvkelso 2023-03-21)
+    // This is a guess for high zoom neighbourhoods
+    // registerSourceHandler("wof", places::processWof);
 
-    var poi = new Pois();
-    registerHandler(poi);
-    registerSourceHandler("osm", poi);
+    var pois = new Pois();
+    registerHandler(pois);
+    registerSourceHandler("osm", pois);
 
     var roads = new Roads();
     registerHandler(roads);
+    registerSourceHandler("ne", roads::processNe);
     registerSourceHandler("osm", roads);
 
     var transit = new Transit();
@@ -64,14 +77,16 @@ public class Basemap extends ForwardingProfile {
 
     var water = new Water();
     registerHandler(water);
-    registerSourceHandler("osm", water);
-    registerSourceHandler("osm_water", water::processOsm);
     registerSourceHandler("ne", water::processNe);
+    //registerSourceHandler("ne", water::processNeLabels);
+    registerSourceHandler("osm", water);
+    //registerSourceHandler("osm", water::processLabels);
+    registerSourceHandler("osm_water", water::processOsm);
 
     var earth = new Earth();
     registerHandler(earth);
-    registerSourceHandler("osm_land", earth::processOsm);
     registerSourceHandler("ne", earth::processNe);
+    registerSourceHandler("osm_land", earth::processOsm);
   }
 
   @Override
@@ -107,6 +122,47 @@ public class Basemap extends ForwardingProfile {
     Path sourcesDir = dataDir.resolve("sources");
 
     String area = args.getString("area", "geofabrik area to download", "monaco");
+
+    // TODO (nvkelso 2023-03-21)
+    // 1.  Register Who's On First data here (512 px zoom 11) for neighbourhoods
+    //     - vector-datasource/data/wof_snapshot.py
+    //     - vector-datasource/data/schema.sql
+    // 2.  Register buffered_land here (512 px zoom 7) for maritime boundaries -- not exported in tiles!
+    // 3.  Register admin_areas here (512 px zoom 4) for road network calculations & etc -- not exported in tiles!
+    // 4.  osm2pgsql.lua polygon handling
+    // 5.  osm2pgsql.lua tag (feature) allowlist handling
+    // 6.  osm2pgsql.lua key (property) blocklist handling
+    // 7.  osm2pgsql.lua disputed, claimed, somaliland handling
+    // 8.  osm2pgsql.lua z_oder_lookup and handling
+    // 9.  osm2pgsql.lua as_boolean handling (eg yes and true and 1)
+    // 10. osm2pgsql.lua recast various OSM features for Point-of-view / disputed feature handling (many)
+    // 11. osm2pgsql.lua Strips disputed tags off of ways
+    // 12. osm2pgsql.lua Redefine extra disputed admin ways as administrative to avoid them
+    // 13. osm2pgsql.lua Adds suppress any ways involved with claims. The claim relation will render instead for everyone.
+    // 14. osm2pgsql.lua Adds dispute tags to ways in disputed relations
+    // 15. osm2pgsql.lua Turn off admin 4 ways within Somaliland
+    // 16. osm2pgsql.lua Mark some disputes as unrecognized to hide them by default
+    // 17. osm2pgsql.lua Adds tags from boundary=claim relation to its ways
+    // 18. osm2pgsql.lua Adds tags from boundary=disputed relation to its ways
+    // 19. osm2pgsql.lua Adds tags to redefine Taiwan admin levels.
+    // 20. osm2pgsql.lua Adds tags to redefine Israel admin 4 boundaries for Palestine.
+    // 21. osm2pgsql.lua Add tags to redefine Hong Kong and Macau as admin 2 except for China which is Admin 4
+    // 22. osm2pgsql.lua Convert admin_level 5 boundaries in Northern Cyprus to 4
+    // 23. osm2pgsql.lua Convert admin_level 5 boundaries in Cyprus to 4
+    // 24. osm2pgsql.lua Turn off West Bank and Judea and Samaria relations
+    // 25. osm2pgsql.lua Fix Kosovo dispute viewpoints
+    // 26. osm2pgsql.lua Turn off admin 4 relations within Somaliland
+    // 27. osm2pgsql.lua handle lcn, rcn, ncn, lwn & etc cycle and walking networks
+    // 28. Unclear where to put integration tests to ensure that input tags = output features in a given tile
+    // 29. Any sql processing post import, see:
+    //     - create_disputed_areas_pbf.sh
+    //     - patch_disputes_into_pbf.sh
+    //     - any "apply" SQL in vector-datasource/data/ (like apply-highway_99_fixes.sql)
+    //       - these are generally orchestrated from: perform-sql-updates.sh
+    // 30. vector-datasource/data/wikidata_merge.py
+    // 31. Do any large sources (like admin_areas or osmdata) need tiling?
+    //     - vector-datasource/data/tile-shapefile.py
+    // 32. vector-datasource/data/functions.sql for all the magic
 
     Planetiler.create(args)
       .setProfile(new Basemap())
