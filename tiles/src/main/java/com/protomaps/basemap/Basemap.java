@@ -7,9 +7,6 @@ import com.protomaps.basemap.layers.Boundaries;
 import com.protomaps.basemap.layers.Buildings;
 import com.protomaps.basemap.layers.Earth;
 import com.protomaps.basemap.layers.Landuse;
-import com.protomaps.basemap.layers.Natural;
-import com.protomaps.basemap.layers.PhysicalLine;
-import com.protomaps.basemap.layers.PhysicalPoint;
 import com.protomaps.basemap.layers.Places;
 import com.protomaps.basemap.layers.Pois;
 import com.protomaps.basemap.layers.Roads;
@@ -41,18 +38,6 @@ public class Basemap extends ForwardingProfile {
     // This is a guess for urban areas
     registerSourceHandler("ne", landuse::processNe);
     registerSourceHandler("osm", landuse);
-
-    //var natural = new Natural();
-    //registerHandler(natural);
-    //registerSourceHandler("osm", natural);
-
-//    var physical_line = new PhysicalLine();
-//    registerHandler(physical_line);
-//    registerSourceHandler("osm", physical_line);
-
-//    var physical_point = new PhysicalPoint();
-//    registerHandler(physical_point);
-//    registerSourceHandler("osm", physical_point);
 
     var places = new Places();
     registerHandler(places);
