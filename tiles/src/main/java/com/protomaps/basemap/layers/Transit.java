@@ -30,49 +30,188 @@ public class Transit implements ForwardingProfile.FeatureProcessor, ForwardingPr
 
   @Override
   public void processFeature(SourceFeature sf, FeatureCollector features) {
-    // todo: exclude railway stations, levels
-    if (sf.canBeLine() && (sf.hasTag("railway") ||
-      sf.hasTag("aerialway", "cable_car") ||
-      sf.hasTag("route", "ferry") ||
-      sf.hasTag("aeroway", "runway", "taxiway")) &&
-      (!sf.hasTag("railway", "abandoned", "construction", "platform", "proposed"))) {
+    var sourceLayer = sf.getSourceLayer();
+    //var name = "";
+    var kind = "";
+    var kind_detail = "";
+    var feature_min_zoom = 20;
+    var name_min_zoom = 20;
+    var theme_min_zoom = 20;
+    var theme_max_zoom = 20;
 
-      int minzoom = 11;
-
-      if (sf.hasTag("service", "yard", "siding", "crossover")) {
-        minzoom = 13;
+    if (sf.canBeLine()) {
+      if (sf.hasTag("route", "train", "subway", "light_rail", "tram", "funicular", "monorail")) {
+        switch (sf.getString("route")) {
+          case "train":
+            if (sf.hasTag("service", "high_speed", "long_distance", "international")) {
+              kind = "train";
+              // TODO (v2) consider setting this as default kind?
+              kind_detail = sf.getString("service");
+              feature_min_zoom = 5;
+              name_min_zoom = 10;
+              theme_min_zoom = 4;
+              theme_max_zoom = 15;
+            } else {
+              kind = "train";
+              feature_min_zoom = 6;
+              name_min_zoom = 12;
+              theme_min_zoom = 5;
+              theme_max_zoom = 15;
+            }
+            break;
+          case "subway":
+            kind = "subway";
+            feature_min_zoom = 8;
+            name_min_zoom = 12;
+            theme_min_zoom = 7;
+            theme_max_zoom = 15;
+            break;
+          case "light_rail":
+          case "tram":
+            kind = sf.getString("route");
+            feature_min_zoom = 9;
+            name_min_zoom = 13;
+            theme_min_zoom = 8;
+            theme_max_zoom = 15;
+            break;
+          case "funicular":
+          case "monorail":
+            kind = sf.getString("route");
+            feature_min_zoom = 12;
+            name_min_zoom = 14;
+            theme_min_zoom = 11;
+            theme_max_zoom = 15;
+            break;
+        }
       }
 
-      var feature = features.line(this.name())
-        .setId(FeatureId.create(sf))
-        .setAttr("railway", sf.getString("railway"))
-        .setAttr("route", sf.getString("route"))
-        .setAttr("aeroway", sf.getString("aeroway"))
-        .setAttr("service", sf.getString("service"))
-        .setAttr("aerialway", sf.getString("aerialway"))
-        .setAttr("network", sf.getString("network"))
-        .setAttr("ref", sf.getString("ref"))
-        .setAttr("highspeed", sf.getString("highspeed"))
-        .setAttr("layer", sf.getString("layer"))
-        .setZoomRange(minzoom, 15);
+      if (kind != "") {
+        var line = features.line(this.name())
+                // Ids are only relevant at max_zoom, else they prevent merges
+                //.setId(FeatureId.create(sf))
+                .setAttr("kind", kind)
+                .setAttr("min_zoom", theme_min_zoom)
+                .setAttr("ref", sf.getString("ref"))
+                .setAttr("operator", sf.getString("operator"))
+                .setAttr("type", sf.getString("type"))
+                .setAttr("colour", sf.getString("colour"))
+                .setAttr("network", sf.getString("network"))
+                .setAttr("state", sf.getString("state"))
+                .setAttr("symbol", sf.getString("symbol"))
+                .setAttr("description", sf.getString("description"))
+                .setAttr("distance", sf.getString("distance"))
+                .setAttr("ascent", sf.getString("ascent"))
+                .setAttr("descent", sf.getString("descent"))
+                .setAttr("roundtrip", sf.getString("roundtrip"))
+                .setAttr("route_name", sf.getString("route_name"))
+                .setAttr("layer", sf.getString("layer"))
+                .setAttr("service", sf.getString("service"))
+                .setZoomRange(theme_min_zoom - 1, theme_max_zoom)
+                .setAttr("source", "openstreetmap.org")
+                .setMinPixelSize(0)
+                .setPixelTolerance(0);
 
-      String kind = "other";
-      if (sf.hasTag("aeroway")) {
-        kind = "aeroway";
-      } else if (sf.hasTag("railway")) {
-        kind = "railway";
-      } else if (sf.hasTag("ferry")) {
-        kind = "ferry";
-      } else if (sf.hasTag("aerialway")) {
-        kind = "aerialway";
+        if (kind_detail != "") {
+          line.setAttr("kind_detail", kind_detail);
+        }
+
+        // Polygons shouldn't have names
+        OsmNames.setOsmNames(line, sf, name_min_zoom);
       }
 
-      feature.setAttr("kind", kind);
-      // nvkelso (20230321)
-      // TODO
-      //    'source', 'openstreetmap.org'
+      // TODO (nvkelso 2023-03-30)
+      //      Some of these should be recast from a polygon?
+      if (sf.isPoint()) {
+        if (sf.hasTag("railway", "halt", "stop", "tram_stop")) {
+          kind = sf.getString("route");
+          feature_min_zoom = 13;
+          name_min_zoom = 14;
+          theme_min_zoom = 12;
+          theme_max_zoom = 15;
+        } else if (sf.hasTag("public_transport", "platform")) {
+          kind = "platform";
+          feature_min_zoom = 15;
+          name_min_zoom = 15;
+          theme_min_zoom = 14;
+          theme_max_zoom = 15;
 
-      OsmNames.setOsmNames(feature, sf, 0);
+          if (sf.hasTag("bus", "yes")) {
+            kind = "bus_stop";
+            feature_min_zoom = 17;
+            name_min_zoom = 16;
+            theme_min_zoom = 15; // MAX_ZOOM
+            theme_max_zoom = 15;
+          }
+        } else if (sf.hasTag("public_transport", "stop_area")) {
+          kind = "stop_area";
+          feature_min_zoom = 15;
+          name_min_zoom = 15;
+          theme_min_zoom = 14;
+          theme_max_zoom = 15;
+        } else if (sf.hasTag("railway", "platform", "station")) {
+          kind = sf.getString("railway");
+          feature_min_zoom = 15;
+          name_min_zoom = 15;
+          theme_min_zoom = 14;
+          theme_max_zoom = 15;
+        } else if (sf.hasTag("railway", "platform", "station")) {
+          kind = sf.getString("railway");
+          feature_min_zoom = 15;
+          name_min_zoom = 15;
+          theme_min_zoom = 14;
+          theme_max_zoom = 15;
+        } else if (sf.hasTag("site", "stop_area")) {
+          kind = "stop_area";
+          feature_min_zoom = 15;
+          name_min_zoom = 15;
+          theme_min_zoom = 14;
+          theme_max_zoom = 15;
+        } else if (sf.hasTag("highway", "bus_stop")) {
+          kind = "bus_stop";
+          feature_min_zoom = 17;
+          name_min_zoom = 15; // MAX_ZOOM
+          theme_min_zoom = 15; // MAX_ZOOM
+          theme_max_zoom = 15;
+        }
+
+        if (kind != "") {
+          var point = features.point(this.name())
+                  // Ids are only relevant at max_zoom, else they prevent merges
+                  //.setId(FeatureId.create(sf))
+                  .setAttr("kind", kind)
+                  .setAttr("min_zoom", theme_min_zoom)
+                  .setAttr("ref", sf.getString("ref"))
+                  .setAttr("operator", sf.getString("operator"))
+                  .setAttr("type", sf.getString("type"))
+                  .setAttr("colour", sf.getString("colour"))
+                  .setAttr("network", sf.getString("network"))
+                  .setAttr("state", sf.getString("state"))
+                  .setAttr("symbol", sf.getString("symbol"))
+                  .setAttr("description", sf.getString("description"))
+                  .setAttr("distance", sf.getString("distance"))
+                  .setAttr("ascent", sf.getString("ascent"))
+                  .setAttr("descent", sf.getString("descent"))
+                  .setAttr("roundtrip", sf.getString("roundtrip"))
+                  .setAttr("route_name", sf.getString("route_name"))
+                  .setAttr("layer", sf.getString("layer"))
+                  .setAttr("service", sf.getString("service"))
+                  .setZoomRange(theme_min_zoom - 1, theme_max_zoom)
+                  .setAttr("source", "openstreetmap.org")
+                  .setMinPixelSize(0)
+                  .setPixelTolerance(0);
+
+          if (kind_detail != "") {
+            point.setAttr("kind_detail", kind_detail);
+          }
+
+          // Polygons shouldn't have names
+          OsmNames.setOsmNames(point, sf, name_min_zoom);
+        }
+      }
+
+      // nvkelso (20230329)
+      // TODO (v2) should some of these go into a different kind class with kind_details?
+      //       (!sf.hasTag("railway", "abandoned", "construction", "platform", "proposed"))) {
     }
   }
 
@@ -84,7 +223,7 @@ public class Transit implements ForwardingProfile.FeatureProcessor, ForwardingPr
     // This should also be 64 px buffer for points
     items = FeatureMerge.mergeLineStrings(items,
       0.5, // after merging, remove lines that are still less than 0.5px long
-      0.1, // simplify output linestrings using a 0.1px tolerance
+      0.5, // simplify output linestrings using a 0.1px tolerance
       8 // remove any detail more than 4px outside the tile boundary
     );
 

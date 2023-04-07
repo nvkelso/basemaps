@@ -64,9 +64,6 @@ public class Buildings implements ForwardingProfile.FeatureProcessor, Forwarding
                 .setId(FeatureId.create(sf))
                 .setAttrWithMinzoom("kind", "building", 14)
                 // TODO nvkelso (20230326)
-                //      kind_detail should be an allowlist set of values
-                .setAttrWithMinzoom("kind_detail", sf.getString("building"), 14)
-                // TODO nvkelso (20230326)
                 //      Names should only be set at max_zoom – really 16 but we'll say 15 here
                 .setAttrWithMinzoom("name", sf.getString("name"), 15)
                 .setAttrWithMinzoom("layer", sf.getString("layer"), 12)
@@ -92,6 +89,12 @@ public class Buildings implements ForwardingProfile.FeatureProcessor, Forwarding
                 //
                 .setAttr("source", "openstreetmap.org")
                 .setBufferPixels(8);
+
+        // TODO nvkelso (20230326)
+        //      kind_detail should be an allowlist set of values
+        if( sf.getString("building") != "yes" ) {
+          feature.setAttrWithMinzoom("kind_detail", sf.getString("building"), 14);
+        }
 
         // Ensure this minzoom config matches the names config above
         OsmNames.setOsmNames(feature, sf, 15);
