@@ -379,6 +379,19 @@ public class Water implements ForwardingProfile.FeatureProcessor, ForwardingProf
           feat.setAttr("alkaline", true);
         }
 
+        if (sf.hasTag("boundary") && sf.getString("boundary") != null) {
+          feat.setAttr("boundary", sf.getString("boundary"));
+        }
+        if (sf.hasTag("layer") && sf.getString("layer") != null) {
+          feat.setAttr("layer", sf.getString("layer"));
+        }
+        if (sf.hasTag("tunnel", "yes")) {
+          feat.setAttr("tunnel", true);
+        }
+        if (sf.hasTag("wikidata_id") && sf.getString("wikidata_id") != null) {
+          feat.setAttrWithMinzoom("wikidata_id", sf.getString("wikidata_id"), 14);
+        }
+
         // Derive additional water label position points
         // Yes, this means there are points and polygons and lines all in same layer!
         if( sf.hasTag("name") && sf.getTag( "name") != null) {
@@ -474,6 +487,19 @@ public class Water implements ForwardingProfile.FeatureProcessor, ForwardingProf
             water_label_position.setAttr("alkaline", true);
           }
 
+          if (sf.hasTag("boundary") && sf.getString("boundary") != null) {
+            water_label_position.setAttr("boundary", sf.getString("boundary"));
+          }
+          if (sf.hasTag("layer") && sf.getString("layer") != null) {
+            water_label_position.setAttr("layer", sf.getString("layer"));
+          }
+          if (sf.hasTag("tunnel", "yes")) {
+            water_label_position.setAttr("tunnel", true);
+          }
+          if (sf.hasTag("wikidata_id") && sf.getString("wikidata_id") != null) {
+            water_label_position.setAttrWithMinzoom("wikidata_id", sf.getString("wikidata_id"), 14);
+          }
+
           OsmNames.setOsmNames(water_label_position, sf, name_min_zoom-1);
         }
       }
@@ -494,6 +520,19 @@ public class Water implements ForwardingProfile.FeatureProcessor, ForwardingProf
           feat.setAttr("boat", true);
         }
 
+        if (sf.hasTag("boundary") && sf.getString("boundary") != null) {
+          feat.setAttr("boundary", sf.getString("boundary"));
+        }
+        if (sf.hasTag("layer") && sf.getString("layer") != null) {
+          feat.setAttr("layer", sf.getString("layer"));
+        }
+        if (sf.hasTag("tunnel", "yes")) {
+          feat.setAttr("tunnel", true);
+        }
+        if (sf.hasTag("wikidata_id") && sf.getString("wikidata_id") != null) {
+          feat.setAttrWithMinzoom("wikidata_id", sf.getString("wikidata_id"), 14);
+        }
+
         OsmNames.setOsmNames(feat, sf, name_min_zoom);
       }
     }
@@ -508,7 +547,14 @@ public class Water implements ForwardingProfile.FeatureProcessor, ForwardingProf
     List<VectorTile.Feature> linesToMerge = new ArrayList<>();
     List<VectorTile.Feature> polygonsToMerge = new ArrayList<>();
 
-    for (var item : items) {
+    for (VectorTile.Feature item : items) {
+      // TODO nvkelso (20230404)
+      //      Exclude polygons for some features that were only used to create label centroids
+      //      Else their "water" polygon "flooding" islands!
+      //if( item.attrs() in "sea", "bay", "fjord", "strait", "marina" (?) ) {
+      // something more here
+      //}
+
       if ( item.geometry().geomType() == GeometryType.LINE ) {
         linesToMerge.add(item);
       } else if (item.geometry().geomType() == GeometryType.POLYGON ) {
