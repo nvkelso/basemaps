@@ -1154,16 +1154,16 @@ public class Roads implements ForwardingProfile.FeatureProcessor, ForwardingProf
        }
        // end set kind attr from OSM highway tags
 
-       // (nvkelso) 20230326
+       // (nvkelso) 20230326 with partial fix 20230404
        // TODO: this is overly simplified and should be improved
        //       it's also potentially exporting junk at low zooms (which is why I added the default in above switch)
        //       For example Tilezen doesn't do is_bridge, is_tunnel until zoom 14 for minor roads and 12 for others
        if (sourceFeature.hasTag("bridge", "yes")) {
          feat.setAttrWithMinzoom("level", 1, 12);
+         feat.setAttrWithMinzoom("is_bridge", true, 12);
        } else if (sourceFeature.hasTag("tunnel", "yes")) {
          feat.setAttrWithMinzoom("level", -1, 12);
-       } else {
-         feat.setAttrWithMinzoom("level", 0, 12);
+         feat.setAttrWithMinzoom("is_tunnel", true, 12);
        }
      }
 
@@ -1457,7 +1457,17 @@ public class Roads implements ForwardingProfile.FeatureProcessor, ForwardingProf
                 .setZoomRange(13, 15);
           }
         }
-        OsmNames.setOsmNames(feat, sourceFeature, 14);
+
+        // This is a hack, something in the logic above is busted
+        if( railway_val == "rail" && sourceFeature.hasTag("usage", "main")) {
+          feat.setAttr("kind", "rail")
+                  .setAttr("kind", railway_val)
+                  .setAttr("kind_detail", "main")
+                  .setAttr("min_zoom", 10)
+                  .setZoomRange(9, 15);
+        }
+
+          OsmNames.setOsmNames(feat, sourceFeature, 14);
       }
 
       //#############################################################
