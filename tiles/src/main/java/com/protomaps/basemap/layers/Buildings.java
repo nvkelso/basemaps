@@ -9,7 +9,7 @@ import com.onthegomap.planetiler.VectorTile;
 import com.onthegomap.planetiler.geo.GeometryException;
 import com.onthegomap.planetiler.reader.SourceFeature;
 import com.protomaps.basemap.feature.FeatureId;
-import com.protomaps.basemap.names.OsmNames;
+import com.protomaps.basemap.util.OsmNames;
 import java.util.List;
 
 public class Buildings implements ForwardingProfile.FeatureProcessor, ForwardingProfile.FeaturePostProcessor {

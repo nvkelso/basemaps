@@ -13,6 +13,7 @@ import com.protomaps.basemap.layers.Roads;
 import com.protomaps.basemap.layers.Transit;
 import com.protomaps.basemap.layers.Water;
 import java.nio.file.Path;
+import java.util.List;
 
 
 public class Basemap extends ForwardingProfile {
@@ -150,6 +151,7 @@ public class Basemap extends ForwardingProfile {
     // 32. vector-datasource/data/functions.sql for all the magic
 
     Planetiler.create(args)
+      .setDefaultLanguages(LANGUAGES)
       .setProfile(new Basemap())
       .addOsmSource("osm", Path.of("data", "sources", area + ".osm.pbf"), "geofabrik:" + area)
       .addNaturalEarthSource("ne", sourcesDir.resolve("natural_earth_vector.sqlite.zip"),

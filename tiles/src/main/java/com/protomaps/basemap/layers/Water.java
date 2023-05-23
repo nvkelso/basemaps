@@ -8,18 +8,13 @@ import com.onthegomap.planetiler.geo.GeoUtils;
 import com.onthegomap.planetiler.geo.GeometryException;
 import com.onthegomap.planetiler.geo.GeometryType;
 import com.onthegomap.planetiler.reader.SourceFeature;
-import com.onthegomap.planetiler.stats.Stats;
 // TODO (nvkelso 2023-03-21)
 // This doesn't exist
-//import com.protomaps.basemap.names.NeNames;
-import com.onthegomap.planetiler.util.Parse;
-import com.protomaps.basemap.feature.FeatureId;
-import org.locationtech.jts.geom.Geometry;
-import com.protomaps.basemap.names.OsmNames;
+//import com.protomaps.basemap.util.NeNames;
+import com.protomaps.basemap.util.OsmNames;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public class Water implements ForwardingProfile.FeatureProcessor, ForwardingProfile.FeaturePostProcessor {
   @Override

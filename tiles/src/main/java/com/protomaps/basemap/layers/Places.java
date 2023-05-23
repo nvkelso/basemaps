@@ -4,10 +4,9 @@ import com.onthegomap.planetiler.FeatureCollector;
 import com.onthegomap.planetiler.ForwardingProfile;
 import com.onthegomap.planetiler.VectorTile;
 import com.onthegomap.planetiler.reader.SourceFeature;
-import com.onthegomap.planetiler.util.Parse;
 import com.protomaps.basemap.feature.FeatureId;
-import com.protomaps.basemap.names.NeNames;
-import com.protomaps.basemap.names.OsmNames;
+import com.protomaps.basemap.util.NeNames;
+import com.protomaps.basemap.util.OsmNames;
 import java.util.List;
 
 public class Places implements ForwardingProfile.FeatureProcessor, ForwardingProfile.FeaturePostProcessor {

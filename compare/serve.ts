@@ -40,6 +40,18 @@ app.get("/config.js", async (req: any, res: any) => {
 			name: "OpenStreetMap Carto",
 			type: "maplibre-gl",
 			url: "/osm-carto.json",
+		},
+		{
+			id: "tilezen",
+			name: "Tilezen",
+			type: "maplibre-gl",
+			url: "/tilezen-style.json",
+		},
+		{
+			id: "snapmap",
+			name: "Snap Map",
+			type: "maplibre-gl",
+			url: "/snapmap-style.json",
 		}
 	];
 

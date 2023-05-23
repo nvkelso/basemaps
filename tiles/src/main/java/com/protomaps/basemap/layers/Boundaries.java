@@ -10,8 +10,9 @@ import com.onthegomap.planetiler.reader.osm.OsmReader;
 import com.onthegomap.planetiler.reader.osm.OsmRelationInfo;
 import com.onthegomap.planetiler.util.Parse;
 import com.protomaps.basemap.feature.FeatureId;
-//import com.protomaps.basemap.names.NeNames;
-// import com.protomaps.basemap.names.OsmNames;
+
+//import com.protomaps.basemap.util.NeNames;
+// import com.protomaps.basemap.util.OsmNames;
 // TODO (nvkelso 2023-03-25)
 // The above is new and unrefined
 // the below doesn't exist
